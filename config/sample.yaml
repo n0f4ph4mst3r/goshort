@@ -1,0 +1,15 @@
+env: "local"
+http_server:
+  address: 0.0.0.0
+  port: 8080
+  timeout: 4s
+  idle_timeout: 30s
+  user: myuser
+  password: qwerty
+
+cache_config:
+  enabled: true
+  ttl: 30m
+  reverse_index_ttl: 30m
+  prefix_url: "url:"
+  prefix_rev: "rev:"

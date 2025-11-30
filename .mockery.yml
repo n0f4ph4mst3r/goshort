@@ -1,0 +1,31 @@
+all: false
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: false
+log-level: info
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+pkgname: '{{.SrcPackageName}}_mocks'
+filename: mocks_test.go
+
+packages:
+  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/url/save:
+    interfaces:
+      AliasGenerator:
+        config: &mock-config
+          dir: '{{.InterfaceDir}}/mocks'
+          filename: '{{.InterfaceName}}.go'
+          structname: 'Mock{{.InterfaceName}}'
+      UrlSaver:
+        config: *mock-config
+  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/url/redirect:
+    interfaces:
+      UrlGetter:
+        config: *mock-config
+  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/url/erase:
+    interfaces:
+      UrlEraser:
+        config: *mock-config
