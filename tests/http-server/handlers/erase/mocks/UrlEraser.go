@@ -2,7 +2,7 @@
 // github.com/vektra/mockery
 // template: testify
 
-package erase_mocks
+package mocks
 
 import (
 	"context"

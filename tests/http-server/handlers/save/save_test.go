@@ -13,9 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/save"
-	mocks "github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/save/mocks"
 	"github.com/n0f4ph4mst3r/goshort/internal/sl/sldiscard"
 	"github.com/n0f4ph4mst3r/goshort/internal/storage"
+	mocks "github.com/n0f4ph4mst3r/goshort/tests/http-server/handlers/save/mocks"
 )
 
 const urlStr = "https://duckduckgo.com"
@@ -100,8 +100,6 @@ func TestSaveHandler(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

@@ -7,25 +7,26 @@ log-level: info
 recursive: false
 require-template-schema-exists: true
 template: testify
-template-schema: '{{.Template}}.schema.json'
-pkgname: '{{.SrcPackageName}}_mocks'
-filename: mocks_test.go
+filename: "{{.InterfaceName}}.go"
+structname: '{{.Mock}}{{.InterfaceName}}'
+pkgname: "mocks"
 
 packages:
-  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/url/save:
+  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/save:
+    config:
+      dir: "tests/http-server/handlers/save/mocks"
     interfaces:
       AliasGenerator:
-        config: &mock-config
-          dir: '{{.InterfaceDir}}/mocks'
-          filename: '{{.InterfaceName}}.go'
-          structname: 'Mock{{.InterfaceName}}'
       UrlSaver:
-        config: *mock-config
-  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/url/redirect:
+
+  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/redirect:
+    config:
+      dir: "tests/http-server/handlers/redirect/mocks"
     interfaces:
       UrlGetter:
-        config: *mock-config
-  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/url/erase:
+
+  github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/erase:
+    config:
+      dir: "tests/http-server/handlers/erase/mocks"
     interfaces:
       UrlEraser:
-        config: *mock-config

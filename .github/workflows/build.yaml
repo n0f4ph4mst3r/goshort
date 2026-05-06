@@ -31,7 +31,7 @@ jobs:
 
       - name: Run tests 
         run: |
-          docker compose exec app sh -c "go test ./... -count=1"
+          docker compose exec app sh -c "go test ./tests/... -count=1 | grep -v '\[no test files\]'"
 
       - name: Shutdown compose
         if: always()

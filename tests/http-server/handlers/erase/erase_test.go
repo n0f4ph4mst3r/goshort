@@ -1,6 +1,7 @@
-package redirect_test
+package erase_test
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,25 +11,25 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/redirect"
-	mocks "github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/redirect/mocks"
+	"github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/erase"
 	"github.com/n0f4ph4mst3r/goshort/internal/sl/sldiscard"
 	"github.com/n0f4ph4mst3r/goshort/internal/storage"
+	mocks "github.com/n0f4ph4mst3r/goshort/tests/http-server/handlers/erase/mocks"
 )
 
-func TestRedirectHandler(t *testing.T) {
+func TestEraseHandler(t *testing.T) {
 	cases := []struct {
 		name         string
 		alias        string
-		expectedCode int
 		mockUrl      string
+		expectedCode int
 		mockError    error
 	}{
 		{
 			name:         "Success",
-			alias:        "GoDuck",
-			expectedCode: http.StatusFound,
+			alias:        "some_alias",
 			mockUrl:      "https://duckduckgo.com",
+			expectedCode: http.StatusOK,
 		},
 		{
 			name:         "Empty alias",
@@ -36,13 +37,13 @@ func TestRedirectHandler(t *testing.T) {
 			expectedCode: http.StatusBadRequest,
 		},
 		{
-			name:         "URL not found",
+			name:         "URL Not Found",
 			alias:        "some_alias",
 			expectedCode: http.StatusNotFound,
 			mockError:    storage.ErrUrlNotFound,
 		},
 		{
-			name:         "GetURL Error",
+			name:         "DeleteURL Error",
 			alias:        "some_alias",
 			expectedCode: http.StatusInternalServerError,
 			mockError:    errors.New("unexpected error"),
@@ -50,38 +51,40 @@ func TestRedirectHandler(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			urlGetterMock := mocks.NewMockUrlGetter(t)
+			urlEraserMock := mocks.NewMockUrlEraser(t)
 
 			if tc.expectedCode == http.StatusBadRequest {
-				req, _ := http.NewRequest(http.MethodGet, "/", nil)
+				req, _ := http.NewRequest(http.MethodDelete, "/", nil)
 				rr := httptest.NewRecorder()
 
-				handler := redirect.New(sldiscard.NewDiscardLogger(), urlGetterMock)
+				handler := erase.New(sldiscard.NewDiscardLogger(), urlEraserMock)
 				handler.ServeHTTP(rr, req)
 
 				require.Equal(t, tc.expectedCode, rr.Code)
 				return
 			}
 
-			urlGetterMock.On("GetURL", mock.Anything, tc.alias).
+			urlEraserMock.On("DeleteURL", mock.Anything, tc.alias).
 				Return(tc.mockUrl, tc.mockError).Once()
 
 			router := chi.NewRouter()
-			router.Get("/url/{alias}", redirect.New(sldiscard.NewDiscardLogger(), urlGetterMock))
+			router.Delete("/url/{alias}", erase.New(sldiscard.NewDiscardLogger(), urlEraserMock))
 
-			req, err := http.NewRequest(http.MethodGet, "/url/"+tc.alias, nil)
+			req, err := http.NewRequest(http.MethodDelete, "/url/"+tc.alias, nil)
 			require.NoError(t, err)
 
 			rr := httptest.NewRecorder()
 			router.ServeHTTP(rr, req)
 
 			require.Equal(t, tc.expectedCode, rr.Code)
-			if tc.expectedCode == http.StatusFound {
-				require.Equal(t, tc.mockUrl, rr.Header().Get("Location"))
+			if tc.expectedCode == http.StatusOK {
+				var resp erase.Response
+				body := rr.Body.String()
+				require.NoError(t, json.Unmarshal([]byte(body), &resp))
+				require.Equal(t, tc.mockUrl, resp.URL)
 			}
 		})
 	}
