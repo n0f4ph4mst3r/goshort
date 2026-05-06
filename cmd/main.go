@@ -14,7 +14,8 @@ import (
 	"github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/erase"
 	"github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/redirect"
 	"github.com/n0f4ph4mst3r/goshort/internal/http-server/handlers/save"
-	"github.com/n0f4ph4mst3r/goshort/internal/http-server/mwlogger"
+	"github.com/n0f4ph4mst3r/goshort/internal/http-server/middleware/mwlogger"
+	"github.com/n0f4ph4mst3r/goshort/internal/http-server/middleware/ssoauth"
 	"github.com/n0f4ph4mst3r/goshort/internal/storage"
 	"github.com/n0f4ph4mst3r/goshort/internal/storage/postgres"
 	rds "github.com/n0f4ph4mst3r/goshort/internal/storage/redis"
@@ -33,7 +34,7 @@ func main() {
 	}
 	fmt.Println("PWD:", dir)
 
-	cfg, dbUrl, cacheUrl := config.MustLoad()
+	cfg, publicKeyPath, dbUrl, cacheUrl := config.MustLoad()
 	log := setupLogger(cfg.Env)
 
 	log.Info("Starting application...", slog.String("env", cfg.Env))
@@ -63,9 +64,20 @@ func main() {
 		api_routes.Get("/url/{alias}", redirect.New(log, url_storage))
 
 		api_routes.Route("/url", func(auth_routes chi.Router) {
-			auth_routes.Use(middleware.BasicAuth("goshort", map[string]string{
-				cfg.HTTPServer.User: cfg.HTTPServer.Password,
-			}))
+			if publicKeyPath == "" {
+				log.Warn("SSO public key path is not set, using basic auth instead")
+
+				auth_routes.Use(middleware.BasicAuth("goshort", map[string]string{
+					"myuser": "qwerty",
+				}))
+
+				auth_routes.Post("/", save.New(log, url_storage, nil))
+				auth_routes.Delete("/{alias}", erase.New(log, url_storage))
+				return
+			}
+
+			log.Info("SSO public key path is set, using SSO auth")
+			auth_routes.Use(ssoauth.New(log, publicKeyPath))
 
 			auth_routes.Post("/", save.New(log, url_storage, nil))
 			auth_routes.Delete("/{alias}", erase.New(log, url_storage))

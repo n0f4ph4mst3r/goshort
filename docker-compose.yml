@@ -3,35 +3,38 @@ services:
     container_name: goshort
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: dockerfile
     image: ghcr.io/n0f4ph4mst3r/goshort:latest
     restart: always
 
     environment:
       HTTP_SERVER_ADDRESS: 0.0.0.0
-      HTTP_SERVER_PORT: 8080
-      HTTP_SERVER_PASSWORD: ${HTTP_SERVER_PASSWORD}
+      HTTP_SERVER_PORT: ${HTTP_SERVER_PORT}
       CONFIG_PATH: /config/config.yaml
       DATABASE_URL: ${DATABASE_URL}
       CACHE_URL: ${CACHE_URL}
+      SSO_PUBLIC_KEY_PATH: /sso_public_key.pem
     volumes:
-      - ${CONFIG_PATH}:/config/config.yaml:ro
+      - ${HOST_CONFIG_PATH}:/config/config.yaml:ro
+      - ${HOST_SSO_PUBLIC_KEY_PATH:-/dev/null}:/sso_public_key.pem:ro
     ports:
-      - "${HTTP_SERVER_PORT}:8080"
+      - "${HTTP_SERVER_PORT}:${HTTP_SERVER_PORT}"
   
   postgres:
-    image: postgres:18
+    image: postgres:18-alpine
     container_name: goshort_db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: test
-      POSTGRES_DB: main  
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       retries: 5
     volumes:
       - pgdata:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
 
   redis:
     image: valkey/valkey:8.1.4

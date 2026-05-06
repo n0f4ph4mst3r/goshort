@@ -61,6 +61,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/gavv/httpexpect/v2 v2.17.0
 	github.com/go-chi/render v1.0.3
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/pressly/goose/v3 v3.26.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect

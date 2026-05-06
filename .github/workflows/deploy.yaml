@@ -24,8 +24,7 @@ jobs:
         run: envsubst < docker-compose.yml > docker-compose-secret.yml
         env:
           HTTP_SERVER_PORT: ${{ secrets.HTTP_SERVER_PORT }}
-          HTTP_SERVER_PASSWORD: ${{ secrets.HTTP_SERVER_PASSWORD }}
-          CONFIG_PATH: ${{ secrets.CONFIG_PATH }}
+          HOST_CONFIG_PATH: ${{ secrets.CONFIG_PATH }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CACHE_URL: ${{ secrets.CACHE_URL }}
 
@@ -33,7 +32,7 @@ jobs:
         run: scp -i ~/.ssh/id_rsa -P ${{ secrets.SSH_PORT }} docker-compose-secret.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:docker-compose.yml
 
       - name: connect and pull
-        run: ssh -i ~/.ssh/id_rsa -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "docker-compose pull app && docker-compose up -d app redis && exit"
+        run: ssh -i ~/.ssh/id_rsa -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "docker-compose pull app && docker-compose up -d app && exit"
 
       - name: cleanup config
         if: always()

@@ -20,8 +20,6 @@ type HTTPServer struct {
 	Port        int           `yaml:"port" env-default:"8080" env:"HTTP_SERVER_PORT"`
 	Timeout     time.Duration `yaml:"timeout" env-default:"4s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"30s"`
-	User        string        `yaml:"user" env-required:"true"`
-	Password    string        `yaml:"password" env-required:"true" env:"HTTP_SERVER_PASSWORD"`
 }
 
 type CacheConfig struct {
@@ -32,7 +30,7 @@ type CacheConfig struct {
 	PrefixRev       string        `yaml:"prefix_rev" env-default:"rev:"`
 }
 
-func MustLoad() (*Config, string, string) {
+func MustLoad() (*Config, string, string, string) {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("No .env file found, using system environment")
 	}
@@ -53,6 +51,20 @@ func MustLoad() (*Config, string, string) {
 		log.Fatalf("Failed to read config: %v", err)
 	}
 
+	publicKeyPath := os.Getenv("SSO_PUBLIC_KEY_PATH")
+	if publicKeyPath == "" && cfg.Env == "production" {
+		log.Fatal("SSO_PUBLIC_KEY_PATH is not set")
+	}
+
+	if _, err := os.ReadFile(publicKeyPath); err != nil {
+		if cfg.Env == "production" {
+			log.Fatal("public key is empty or file not exists")
+		}
+
+		log.Println("Warning: Incorrect RS256 key, using empty path")
+		publicKeyPath = ""
+	}
+
 	db_str := os.Getenv("DATABASE_URL")
 	if db_str == "" {
 		log.Fatal("DATABASE_URL is not set")
@@ -63,5 +75,5 @@ func MustLoad() (*Config, string, string) {
 		log.Println("Warning: CACHE_URL is not set")
 	}
 
-	return &cfg, db_str, cache_str
+	return &cfg, publicKeyPath, db_str, cache_str
 }
