@@ -14,11 +14,15 @@ You need to have [Docker](https://www.docker.com/) and [Docker Compose](https://
 
 Define environment variables. You can copy environment from [example](https://github.com/n0f4ph4mst3r/goshort/blob/master/.env.sample)
 
-    cp .env.sample .env
+```bash
+cp .env.sample .env
+```
 
 Perform
 
-	sudo docker-compose up
+```bash
+docker-compose up -d
+```
 
 Access the application via http://localhost:8080.
 
@@ -28,23 +32,28 @@ Access the application via http://localhost:8080.
 
 To develop the app manually, you need the following tools installed:
 
-- [Go](https://go.dev/) (version 1.25.1 or newer)
+- [Go](https://go.dev/) (version 1.26.4 or newer) 
+- [Postgres](https://www.postgresql.org/) & [Redis](https://redis.io/) core storage services
+- [Kafka](https://kafka.apache.org/) as a message broker
+- [Outbox Worker](https://github.com/n0f4ph4mst3r/outbox-relay) for processing Kafka events
 
-- [Postgres](https://www.postgresql.org/) and [Redis](https://redis.io/) databases (you can run them via Docker Compose)
+### Start Infrastructure Dependencies
 
-### Start the dev DB
+If you don't have these tools installed natively, you can spin them up quickly inside Docker containers using the provided Compose file:
 
-If you don’t have Postgres or Redis installed locally, you can start them with Docker Compose:
+```bash
+docker-compose up -d outbox postgres redis redpanda shortener-topics
+```
 
-    sudo docker-compose -f docker-compose.yml up postgres redis
-
-This will start local Postgres and Redis instances.
+This command starts the infrastructure components in the background (`-d`). Wait until all containers are healthy before running the application. You can check their status using `docker ps`.
 
 ### Start the server
 
 Run following command:
 
-    go run ./cmd/main.go
+```bash
+go run ./cmd/main.go
+```
 
 This will compile and start the backend server. After that, the REST API service will be available with your [config](https://github.com/n0f4ph4mst3r/goshort/blob/master/config/sample.yaml) and [env](https://github.com/n0f4ph4mst3r/goshort/blob/master/.env.sample). Check
 
@@ -76,11 +85,11 @@ Use these endpoints for manage your urls
 **CURL Create (Basic Auth):**
 
 ```bash
-	curl -X POST {{HOST_URL}}/api/url -u myuser:qwerty -d '{"url":"[https://example.com](https://example.com)","alias":"ex"}'
+curl -X POST {{HOST_URL}}/api/url -u myuser:qwerty -d '{"url":"[https://example.com](https://example.com)","alias":"ex"}'
 ```
 
 **CURL Delete (JWT):**
 
 ```bash
-	curl -X DELETE {{HOST_URL}}/api/url/goDuck -H "Authorization: Bearer <your_jwt_token>"
+curl -X DELETE {{HOST_URL}}/api/url/goDuck -H "Authorization: Bearer <your_jwt_token>"
 ```
