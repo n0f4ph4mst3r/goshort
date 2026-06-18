@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -58,16 +59,33 @@ func runMigrations(db *sql.DB) error {
 func (s *Storage) SaveURL(ctx context.Context, u, alias string) error {
 	const op = "storage.postgres.SaveUrl"
 
-	_, err := s.db.ExecContext(ctx, `
+	const query = `
 		INSERT INTO url (alias, origin)
 		VALUES ($1, $2);
-	`, alias, u)
+	`
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	defer tx.Rollback()
+
+	_, err = tx.ExecContext(ctx, query, alias, u)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
 			return fmt.Errorf("%s: %w", op, storage.ErrUrlExists)
 		}
 		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	eventPayload := map[string]any{
+		"alias":  alias,
+		"origin": u,
+	}
+
+	if err := s.commitWithOutboxEvent(ctx, tx, "UrlSaved", eventPayload); err != nil {
+		return fmt.Errorf("%s: failed to commit outbox event: %w", op, err)
 	}
 
 	return nil
@@ -95,19 +113,62 @@ func (s *Storage) GetURL(ctx context.Context, alias string) (string, error) {
 func (s *Storage) DeleteURL(ctx context.Context, alias string) (string, error) {
 	const op = "storage.postgres.DeleteURL"
 
-	var u string
-	err := s.db.QueryRowContext(ctx, `
+	const query = `
 		DELETE FROM url
-		WHERE origin = (SELECT origin FROM url WHERE alias = $1)
-		RETURNING origin
-	`, alias).Scan(&u)
+		WHERE alias = $1
+		RETURNING origin;
+	`
 
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+	defer tx.Rollback()
+
+	var u string
+	if err = tx.QueryRowContext(ctx, query, alias).Scan(&u); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", fmt.Errorf("%s: %w", op, storage.ErrUrlNotFound)
 		}
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
+	eventPayload := map[string]any{
+		"alias":  alias,
+		"origin": u,
+	}
+
+	if err = s.commitWithOutboxEvent(ctx, tx, "UrlDeleted", eventPayload); err != nil {
+		return "", fmt.Errorf("%s: failed to commit outbox event: %w", op, err)
+	}
+
 	return u, nil
+}
+
+func (s *Storage) commitWithOutboxEvent(
+	ctx context.Context,
+	tx *sql.Tx,
+	eventType string,
+	eventPayload map[string]any,
+) error {
+	const query = `
+		INSERT INTO outbox_events (event_type, payload)
+		VALUES ($1, $2)
+	`
+
+	payloadBytes, err := json.Marshal(eventPayload)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, query, eventType, payloadBytes)
+	if err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
